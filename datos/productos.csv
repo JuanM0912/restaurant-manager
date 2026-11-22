@@ -1,0 +1,13 @@
+codigo;tipo;nombre;categoria;precio;disponible;valorEspecifico
+P001;ALIMENTO;Empanadas x3;Entradas;9000;SI;10
+P002;ALIMENTO;Patacones con hogao;Entradas;12000;SI;12
+P003;ALIMENTO;Hamburguesa clasica;Platos fuertes;25000;SI;15
+P004;ALIMENTO;Bandeja paisa;Platos fuertes;32000;SI;20
+P005;ALIMENTO;Salmon a la plancha;Platos fuertes;42000;SI;18
+P006;ALIMENTO;Pasta en salsa de champinones;Platos fuertes;28000;SI;15
+P007;BEBIDA;Limonada de coco;Bebidas;9000;SI;400
+P008;BEBIDA;Jugo de mora en agua;Bebidas;7000;SI;350
+P009;BEBIDA;Cafe americano;Bebidas;5000;SI;250
+P010;BEBIDA;Te de burbujas;Bebidas;11000;SI;500
+P011;ALIMENTO;Postre de natas;Postres;10000;SI;5
+P012;ALIMENTO;Cheesecake de fresa;Postres;13000;SI;5

@@ -1,0 +1,12 @@
+# Archivos compilados (VS Code los genera en bin/)
+bin/
+out/
+*.class
+
+# Pedidos generados al usar el programa: cada uno tiene los suyos, no se suben
+datos/pedidos.csv
+datos/pedido_items.csv
+
+# Archivos del sistema operativo
+Thumbs.db
+.DS_Store

@@ -30,8 +30,11 @@ public class ServicioPedidos {
     private final List<ObservadorPedido> observadores = new ArrayList<>();
     private int siguienteId;
 
-    public ServicioPedidos(PedidoCSV repositorio, List<EstrategiaDescuento> promociones) {
+   public ServicioPedidos(PedidoCSV repositorio, List<EstrategiaDescuento> promociones) {
         this.repositorio = repositorio;
+        this.promociones = (promociones != null)
+                ? new ArrayList<>(promociones)
+                : new ArrayList<>();
         try {
             this.pedidos.addAll(repositorio.cargar());
         } catch (IOException e) {
@@ -39,7 +42,6 @@ public class ServicioPedidos {
         }
         this.siguienteId = calcularSiguienteId();
     }
-
     // ---------- Observer: suscripcion y aviso ----------
 
     public void agregarObservador(ObservadorPedido observador) {

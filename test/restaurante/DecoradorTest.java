@@ -2,8 +2,8 @@ package restaurante;
 
 import org.junit.jupiter.api.Test;
 import restaurante.modelo.Adicional;
+import restaurante.modelo.Alimento;
 import restaurante.modelo.ElementoPedido;
-import restaurante.modelo.Producto;
 import restaurante.patrones.decorador.ConIndicacion;
 import restaurante.patrones.decorador.ConIngredienteExtra;
 import restaurante.patrones.decorador.ConTamanoGrande;
@@ -14,7 +14,7 @@ class DecoradorTest {
 
     @Test
     void deberiaAplicarDecoradoresYAcumularPrecioYDescripcion() {
-        ElementoPedido base = new Producto("P01", "Hamburguesa Clasica", 15000, true);
+        ElementoPedido base = new Alimento("P01", "Hamburguesa Clasica", "Platos fuertes", 15000, 15);
         Adicional quesoExtra = new Adicional("Queso", 3000);
         Adicional grande = new Adicional("Grande", 4000);
         Adicional sinCebolla = new Adicional("Sin cebolla", 0);

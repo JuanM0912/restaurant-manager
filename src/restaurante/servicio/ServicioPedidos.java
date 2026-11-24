@@ -1,8 +1,12 @@
 package restaurante.servicio;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 
 import restaurante.modelo.ElementoPedido;
 import restaurante.modelo.EstadoPedido;
@@ -28,8 +32,11 @@ public class ServicioPedidos {
 
     public ServicioPedidos(PedidoCSV repositorio, List<EstrategiaDescuento> promociones) {
         this.repositorio = repositorio;
-        this.promociones = new ArrayList<>(promociones);
-        this.pedidos.addAll(repositorio.cargar(this.promociones));
+        try {
+            this.pedidos.addAll(repositorio.cargar());
+        } catch (IOException e) {
+            throw new UncheckedIOException("No se pudieron cargar los pedidos", e);
+        }
         this.siguienteId = calcularSiguienteId();
     }
 
@@ -139,7 +146,11 @@ public class ServicioPedidos {
     // ---------- Ayudas privadas ----------
 
     private void guardar() {
-        repositorio.guardar(pedidos);
+        try {
+            repositorio.guardar(pedidos);
+        } catch (IOException e) {
+            throw new UncheckedIOException("No se pudieron guardar los pedidos", e);
+        }
     }
 
     private int calcularSiguienteId() {

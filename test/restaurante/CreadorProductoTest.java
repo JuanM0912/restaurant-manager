@@ -1,6 +1,8 @@
 package restaurante;
 
 import org.junit.jupiter.api.Test;
+
+import restaurante.modelo.Bebida;
 import restaurante.modelo.Producto;
 import restaurante.servicio.ServicioMenu;
 
@@ -11,7 +13,7 @@ class CreadorProductoTest {
     @Test
     void deberiaAgregarBuscarYCambiarDisponibilidadDeProductos() {
         ServicioMenu menu = new ServicioMenu();
-        Producto bebida = new Producto("B01", "Jugo Natural", 6000, true);
+        Producto bebida = new Bebida("B01", "Jugo Natural", "Bebidas", 6000, 350);
 
         menu.agregarProducto(bebida);
 

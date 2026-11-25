@@ -1,13 +1,8 @@
 package restaurante.gui;
 
 import java.awt.BorderLayout;
-import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -22,9 +17,10 @@ import javax.swing.ListSelectionModel;
 import javax.swing.table.DefaultTableModel;
 
 import restaurante.modelo.Producto;
+import restaurante.patrones.fabrica.CreadorProducto;
 import restaurante.servicio.ServicioMenu;
 
-/** Administracion del menu: ver productos y cambiar disponibilidad. */
+/** Administracion del menu: ver productos, registrar nuevos, cambiar precio y disponibilidad. */
 public class PanelMenu extends JPanel implements Refrescable {
 
     private final ServicioMenu menu;
@@ -35,11 +31,12 @@ public class PanelMenu extends JPanel implements Refrescable {
     };
     private final JTable tabla = new JTable(modelo);
 
-    private final JComboBox<String> comboTipo = new JComboBox<>(new String[] {"Alimento", "Bebida"});
+    // Formulario de registro
+    private final JComboBox<String> comboTipo = new JComboBox<>();
     private final JTextField campoNombre = new JTextField();
     private final JComboBox<String> comboCategoria = new JComboBox<>();
     private final JTextField campoPrecio = new JTextField();
-    private final JLabel etiquetaValor = new JLabel("Detalle numerico:");
+    private final JLabel etiquetaValor = new JLabel();
     private final JTextField campoValor = new JTextField();
 
     public PanelMenu(ServicioMenu menu) {
@@ -72,10 +69,14 @@ public class PanelMenu extends JPanel implements Refrescable {
     private JPanel crearFormulario() {
         JPanel formulario = new JPanel(new GridLayout(0, 1, 4, 4));
         Estilo.tarjeta(formulario);
-        formulario.setPreferredSize(new Dimension(300, 0));
+        formulario.setPreferredSize(new java.awt.Dimension(300, 0));
 
+        // Un tipo por cada creador registrado (Factory Method). Si se agrega CreadorPostre, aparece aqui solo.
+        for (CreadorProducto creador : menu.getCreadores()) {
+            comboTipo.addItem(creador.getTipo());
+        }
         comboTipo.addActionListener(e -> actualizarEtiquetaValor());
-        comboCategoria.setEditable(true);
+        comboCategoria.setEditable(true);   // permite escribir una categoria nueva
 
         formulario.add(Estilo.etiqueta("Registrar producto", Estilo.SUBTITULO));
         formulario.add(new JLabel("Tipo:"));
@@ -97,20 +98,31 @@ public class PanelMenu extends JPanel implements Refrescable {
     }
 
     private void actualizarEtiquetaValor() {
-        Object tipo = comboTipo.getSelectedItem();
-        if ("Bebida".equals(tipo)) {
-            etiquetaValor.setText("Capacidad (ml):");
-        } else {
-            etiquetaValor.setText("Peso o valor (g):");
+        int indice = comboTipo.getSelectedIndex();
+        if (indice >= 0) {
+            etiquetaValor.setText(menu.getCreadores().get(indice).getEtiquetaValorEspecifico() + ":");
         }
     }
 
     private void registrar() {
-        JOptionPane.showMessageDialog(
-                this,
-                "El registro dinamico de productos no esta disponible en esta version del servicio.",
-                "Aviso",
-                JOptionPane.INFORMATION_MESSAGE);
+        try {
+            Producto nuevo = menu.registrarProducto(
+                    (String) comboTipo.getSelectedItem(),
+                    campoNombre.getText(),
+                    String.valueOf(comboCategoria.getSelectedItem()),
+                    Long.parseLong(campoPrecio.getText().trim()),
+                    Integer.parseInt(campoValor.getText().trim()));
+            JOptionPane.showMessageDialog(this, "Producto registrado con codigo " + nuevo.getCodigo());
+            campoNombre.setText("");
+            campoPrecio.setText("");
+            campoValor.setText("");
+            refrescar();
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this, "Precio y " + etiquetaValor.getText()
+                    + " deben ser numeros enteros, sin puntos.");
+        } catch (RuntimeException ex) {
+            Estilo.mostrarError(this, ex);
+        }
     }
 
     private String codigoSeleccionado() {
@@ -123,14 +135,22 @@ public class PanelMenu extends JPanel implements Refrescable {
     }
 
     private void cambiarPrecio() {
-        if (codigoSeleccionado() == null) {
+        String codigo = codigoSeleccionado();
+        if (codigo == null) {
             return;
         }
-        JOptionPane.showMessageDialog(
-                this,
-                "El cambio de precio directo no esta disponible en esta version del servicio.",
-                "Aviso",
-                JOptionPane.INFORMATION_MESSAGE);
+        String texto = JOptionPane.showInputDialog(this, "Nuevo precio:");
+        if (texto == null) {
+            return;
+        }
+        try {
+            menu.cambiarPrecio(codigo, Long.parseLong(texto.trim()));
+            refrescar();
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this, "Escriba un numero entero, sin puntos.");
+        } catch (RuntimeException ex) {
+            Estilo.mostrarError(this, ex);
+        }
     }
 
     private void cambiarDisponibilidad() {
@@ -139,22 +159,8 @@ public class PanelMenu extends JPanel implements Refrescable {
             return;
         }
         Producto p = menu.buscarPorCodigo(codigo);
-        if (p == null) {
-            JOptionPane.showMessageDialog(this, "No se encontro el producto seleccionado.");
-            return;
-        }
         menu.cambiarDisponibilidad(codigo, !p.isDisponible());
         refrescar();
-    }
-
-    private List<String> obtenerCategorias() {
-        Set<String> categorias = new LinkedHashSet<>();
-        for (Producto p : menu.listarProductos()) {
-            if (p.getCategoria() != null && !p.getCategoria().isBlank()) {
-                categorias.add(p.getCategoria());
-            }
-        }
-        return new ArrayList<>(categorias);
     }
 
     @Override
@@ -167,7 +173,7 @@ public class PanelMenu extends JPanel implements Refrescable {
         }
         Object escrita = comboCategoria.getSelectedItem();
         comboCategoria.removeAllItems();
-        for (String categoria : obtenerCategorias()) {
+        for (String categoria : menu.listarCategorias()) {
             comboCategoria.addItem(categoria);
         }
         if (escrita != null) {

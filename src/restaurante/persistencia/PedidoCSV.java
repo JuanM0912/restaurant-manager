@@ -1,101 +1,108 @@
 package restaurante.persistencia;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import restaurante.modelo.EstadoPedido;
-import restaurante.modelo.Pedido;
+import java.util.Map;
 
+import restaurante.modelo.EstadoPedido;
+import restaurante.modelo.ItemPedido;
+import restaurante.modelo.Pedido;
+import restaurante.patrones.estrategia.EstrategiaDescuento;
+
+/**
+ * Guarda y lee los pedidos en dos archivos:
+ *  - pedidos.csv       -> id;mesa;fechaHora;estado;promocion;subtotal;descuento;total
+ *  - pedido_items.csv  -> idPedido;descripcion;precioUnitario;cantidad;subtotal
+ * Las columnas subtotal, descuento y total se guardan para poder revisar las ventas en Excel.
+ */
 public class PedidoCSV {
 
-    private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
-    private static final String SEPARADOR = ";";
-    private static final String ENCABEZADO = "id;mesa;fechaHora;estado;subtotal;descuento;total;items";
+    private static final String ENC_PEDIDOS = "id;mesa;fechaHora;estado;promocion;subtotal;descuento;total";
+    private static final String ENC_ITEMS = "idPedido;descripcion;precioUnitario;cantidad;subtotal";
 
-    private final Path archivo;
+    private final String rutaPedidos;
+    private final String rutaItems;
 
-    public PedidoCSV(Path archivo) {
-        this.archivo = archivo;
+    public PedidoCSV(String rutaPedidos, String rutaItems) {
+        this.rutaPedidos = rutaPedidos;
+        this.rutaItems = rutaItems;
     }
 
-    public PedidoCSV(String rutaArchivo) {
-        this.archivo = Path.of(rutaArchivo);
-    }
-
-    public void guardar(List<Pedido> pedidos) throws IOException {
-        if (archivo.getParent() != null) {
-            Files.createDirectories(archivo.getParent());
-        }
-        try (BufferedWriter writer = Files.newBufferedWriter(archivo, StandardCharsets.UTF_8)) {
-            writer.write(ENCABEZADO);
-            writer.newLine();
-            for (Pedido pedido : pedidos) {
-                writer.write(formatearPedido(pedido));
-                writer.newLine();
+    public void guardar(List<Pedido> pedidos) {
+        List<String[]> filasPedidos = new ArrayList<>();
+        List<String[]> filasItems = new ArrayList<>();
+        for (Pedido p : pedidos) {
+            filasPedidos.add(new String[] {
+                    String.valueOf(p.getId()),
+                    String.valueOf(p.getMesa()),
+                    p.getFechaHora().withNano(0).toString(),
+                    p.getEstado().name(),
+                    ArchivoCSV.limpiar(p.getPromocion().getNombre()),
+                    String.valueOf(p.getSubtotal()),
+                    String.valueOf(p.getDescuento()),
+                    String.valueOf(p.getTotal())
+            });
+            for (ItemPedido item : p.getItems()) {
+                filasItems.add(new String[] {
+                        String.valueOf(p.getId()),
+                        ArchivoCSV.limpiar(item.getElemento().getDescripcion()),
+                        String.valueOf(item.getElemento().getPrecio()),
+                        String.valueOf(item.getCantidad()),
+                        String.valueOf(item.getSubtotal())
+                });
             }
         }
+        ArchivoCSV.escribir(rutaPedidos, ENC_PEDIDOS, filasPedidos);
+        ArchivoCSV.escribir(rutaItems, ENC_ITEMS, filasItems);
     }
 
-    public List<Pedido> cargar() throws IOException {
+    /**
+     * Lee los pedidos guardados.
+     * @param promociones promociones disponibles, para volver a asociar cada pedido con la suya por nombre
+     */
+    public List<Pedido> cargar(List<EstrategiaDescuento> promociones) {
+        // 1. Leer los items y agruparlos por id de pedido.
+        Map<Integer, List<String[]>> itemsPorPedido = new HashMap<>();
+        for (String[] fila : ArchivoCSV.leer(rutaItems)) {
+            int idPedido = Integer.parseInt(ArchivoCSV.sinBom(fila[0]).trim());
+            itemsPorPedido.computeIfAbsent(idPedido, k -> new ArrayList<>()).add(fila);
+        }
+
+        // 2. Leer los pedidos. Los items se agregan con estado PENDIENTE y al final se pone el estado real.
         List<Pedido> pedidos = new ArrayList<>();
-        if (!Files.exists(archivo)) {
-            return pedidos;
-        }
-        try (BufferedReader reader = Files.newBufferedReader(archivo, StandardCharsets.UTF_8)) {
-            String linea;
-            boolean primeraLinea = true;
-            while ((linea = reader.readLine()) != null) {
-                if (primeraLinea) {
-                    primeraLinea = false;
-                    if (linea.startsWith("id;")) {
-                        continue;
-                    }
-                }
-                if (linea.trim().isEmpty()) {
-                    continue;
-                }
-                pedidos.add(parsearPedido(linea));
+        for (String[] fila : ArchivoCSV.leer(rutaPedidos)) {
+            int id = Integer.parseInt(ArchivoCSV.sinBom(fila[0]).trim());
+            int mesa = Integer.parseInt(fila[1].trim());
+            LocalDateTime fecha = LocalDateTime.parse(fila[2].trim());
+            EstadoPedido estadoReal = EstadoPedido.valueOf(fila[3].trim());
+            String nombrePromocion = fila[4].trim();
+
+            Pedido pedido = new Pedido(id, mesa, fecha, EstadoPedido.PENDIENTE);
+            for (String[] item : itemsPorPedido.getOrDefault(id, new ArrayList<>())) {
+                String descripcion = item[1];
+                long precioUnitario = Long.parseLong(item[2].trim());
+                int cantidad = Integer.parseInt(item[3].trim());
+                pedido.agregarItem(new ElementoGuardado(descripcion, precioUnitario), cantidad);
             }
+            pedido.setPromocion(buscarPromocion(promociones, nombrePromocion));
+
+            // Avanzar paso a paso hasta el estado guardado (respeta las reglas de transicion).
+            while (pedido.getEstado() != estadoReal) {
+                pedido.cambiarEstado(pedido.getEstado().siguiente());
+            }
+            pedidos.add(pedido);
         }
         return pedidos;
     }
 
-    private String formatearPedido(Pedido pedido) {
-        StringBuilder itemsTexto = new StringBuilder();
-        for (int i = 0; i < pedido.getItems().size(); i++) {
-            if (i > 0) {
-                itemsTexto.append(" | ");
+    private EstrategiaDescuento buscarPromocion(List<EstrategiaDescuento> promociones, String nombre) {
+        for (EstrategiaDescuento e : promociones) {
+            if (e.getNombre().equals(nombre)) {
+                return e;
             }
-            itemsTexto.append(pedido.getItems().get(i).toString());
         }
-        return String.join(SEPARADOR,
-                String.valueOf(pedido.getId()),
-                String.valueOf(pedido.getMesa()),
-                pedido.getFechaHora().format(FORMATO_FECHA),
-                pedido.getEstado().name(),
-                String.valueOf(pedido.getSubtotal()),
-                String.valueOf(pedido.getDescuento()),
-                String.valueOf(pedido.getTotal()),
-                itemsTexto.toString().replace(SEPARADOR, ",")
-        );
-    }
-
-    private Pedido parsearPedido(String linea) {
-        String[] partes = linea.split(SEPARADOR, -1);
-        if (partes.length < 4) {
-            throw new IllegalArgumentException("Linea de pedido CSV invalida: " + linea);
-        }
-        int id = Integer.parseInt(partes[0].trim());
-        int mesa = Integer.parseInt(partes[1].trim());
-        LocalDateTime fechaHora = LocalDateTime.parse(partes[2].trim(), FORMATO_FECHA);
-        EstadoPedido estado = EstadoPedido.valueOf(partes[3].trim());
-        return new Pedido(id, mesa, fechaHora, estado);
+        return null; // Pedido.setPromocion(null) deja "Sin promocion"
     }
 }

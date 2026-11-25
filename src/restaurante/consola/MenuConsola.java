@@ -2,15 +2,15 @@ package restaurante.consola;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Scanner;
-import java.util.Set;
 
+import restaurante.modelo.Adicional;
 import restaurante.modelo.ElementoPedido;
 import restaurante.modelo.Pedido;
 import restaurante.modelo.Producto;
 import restaurante.patrones.estrategia.EstrategiaDescuento;
+import restaurante.patrones.fabrica.CreadorProducto;
 import restaurante.servicio.ServicioMenu;
 import restaurante.servicio.ServicioPedidos;
 import restaurante.servicio.ServicioReportes;
@@ -18,6 +18,7 @@ import restaurante.servicio.Sistema;
 
 /**
  * Interfaz por consola. Solo pide datos, llama a los servicios y muestra resultados.
+ * No calcula precios ni lee archivos: eso lo hacen los servicios.
  */
 public class MenuConsola {
 
@@ -40,6 +41,7 @@ public class MenuConsola {
             try {
                 ejecutar(opcion);
             } catch (RuntimeException e) {
+                // Cualquier error de negocio (precio invalido, estado no permitido...) se muestra sin cerrar el programa.
                 System.out.println("ERROR: " + e.getMessage());
             }
         } while (opcion != 0);
@@ -81,62 +83,50 @@ public class MenuConsola {
         imprimirProductos(menu.listarProductos());
     }
 
-    private List<String> obtenerCategorias() {
-        Set<String> categorias = new LinkedHashSet<>();
-        for (Producto p : menu.listarProductos()) {
-            if (p.getCategoria() != null && !p.getCategoria().isBlank()) {
-                categorias.add(p.getCategoria());
-            }
-        }
-        return new ArrayList<>(categorias);
-    }
-
-    private List<Producto> filtrarPorCategoria(String categoria) {
-        List<Producto> filtrados = new ArrayList<>();
-        for (Producto p : menu.listarProductos()) {
-            if (categoria.equalsIgnoreCase(p.getCategoria())) {
-                filtrados.add(p);
-            }
-        }
-        return filtrados;
-    }
-
     private void verPorCategoria() {
-        List<String> categorias = obtenerCategorias();
-        if (categorias.isEmpty()) {
-            System.out.println("No hay categorias registradas.");
-            return;
-        }
+        List<String> categorias = menu.listarCategorias();
         for (int i = 0; i < categorias.size(); i++) {
             System.out.println((i + 1) + ". " + categorias.get(i));
         }
         int elegida = leerEntero("Numero de categoria: ") - 1;
         if (elegida >= 0 && elegida < categorias.size()) {
-            imprimirProductos(filtrarPorCategoria(categorias.get(elegida)));
+            imprimirProductos(menu.listarPorCategoria(categorias.get(elegida)));
         } else {
             System.out.println("Categoria no valida.");
         }
     }
 
     private void registrarProducto() {
-        System.out.println("El registro dinamico de productos no esta disponible en esta version del servicio.");
-        System.out.println("Productos actuales en el menu:");
-        verMenu();
+        List<CreadorProducto> tipos = menu.getCreadores();
+        for (int i = 0; i < tipos.size(); i++) {
+            System.out.println((i + 1) + ". " + tipos.get(i).getTipo());
+        }
+        int t = leerEntero("Tipo de producto: ") - 1;
+        if (t < 0 || t >= tipos.size()) {
+            System.out.println("Tipo no valido.");
+            return;
+        }
+        CreadorProducto creador = tipos.get(t);
+        String nombre = leerTexto("Nombre: ");
+        String categoria = leerTexto("Categoria (existentes: " + menu.listarCategorias() + "): ");
+        long precio = leerEntero("Precio: ");
+        int valor = leerEntero(creador.getEtiquetaValorEspecifico() + ": ");
+        Producto nuevo = menu.registrarProducto(creador.getTipo(), nombre, categoria, precio, valor);
+        System.out.println("Producto registrado: " + nuevo);
     }
 
     private void cambiarPrecio() {
-        System.out.println("El cambio de precio directo no esta disponible en esta version del servicio.");
+        String codigo = leerTexto("Codigo del producto: ");
+        long precio = leerEntero("Nuevo precio: ");
+        menu.cambiarPrecio(codigo, precio);
+        System.out.println("Precio actualizado.");
     }
 
     private void cambiarDisponibilidad() {
         String codigo = leerTexto("Codigo del producto: ");
         boolean disponible = leerTexto("Disponible? (s/n): ").equalsIgnoreCase("s");
-        boolean actualizada = menu.cambiarDisponibilidad(codigo, disponible);
-        if (actualizada) {
-            System.out.println("Disponibilidad actualizada.");
-        } else {
-            System.out.println("No se encontro un producto con ese codigo.");
-        }
+        menu.cambiarDisponibilidad(codigo, disponible);
+        System.out.println("Disponibilidad actualizada.");
     }
 
     // ================= PEDIDOS =================
@@ -146,12 +136,7 @@ public class MenuConsola {
         boolean seguir = true;
         while (seguir) {
             verMenu();
-            String codigo = leerTexto("Codigo del producto: ");
-            Producto producto = menu.buscarPorCodigo(codigo);
-            if (producto == null) {
-                System.out.println("Producto no encontrado.");
-                continue;
-            }
+            Producto producto = menu.buscarPorCodigo(leerTexto("Codigo del producto: "));
             int cantidad = leerEntero("Cantidad: ");
             ElementoPedido elemento = personalizar(producto);
             pedido.agregarItem(elemento, cantidad);
@@ -164,8 +149,29 @@ public class MenuConsola {
         System.out.println(pedido.getResumen());
     }
 
+    /** Pregunta por adicionales, tamano e indicaciones (patron Decorator en ServicioMenu). */
     private ElementoPedido personalizar(Producto producto) {
-        return producto;
+        List<Adicional> elegidos = new ArrayList<>();
+        if (leerTexto("Agregar adicionales? (s/n): ").equalsIgnoreCase("s")) {
+            List<Adicional> disponibles = menu.getAdicionales();
+            for (int i = 0; i < disponibles.size(); i++) {
+                System.out.println((i + 1) + ". " + disponibles.get(i));
+            }
+            String respuesta = leerTexto("Numeros separados por coma (ej: 1,3): ");
+            for (String parte : respuesta.split(",")) {
+                try {
+                    int i = Integer.parseInt(parte.trim()) - 1;
+                    if (i >= 0 && i < disponibles.size()) {
+                        elegidos.add(disponibles.get(i));
+                    }
+                } catch (NumberFormatException e) {
+                    // Se ignora lo que no sea numero.
+                }
+            }
+        }
+        boolean grande = leerTexto("Tamano grande (+30%)? (s/n): ").equalsIgnoreCase("s");
+        String indicacion = leerTexto("Indicacion para cocina (Enter si no hay): ");
+        return menu.personalizar(producto, elegidos, grande, indicacion);
     }
 
     private void elegirPromocion(Pedido pedido) {
@@ -192,10 +198,6 @@ public class MenuConsola {
 
     private void modificarCantidad() {
         Pedido pedido = pedidos.buscarPorId(leerEntero("Numero de pedido: "));
-        if (pedido == null) {
-            System.out.println("Pedido no encontrado.");
-            return;
-        }
         System.out.println(pedido.getResumen());
         int item = leerEntero("Numero de item: ") - 1;
         int cantidad = leerEntero("Nueva cantidad (0 para quitar): ");
@@ -208,11 +210,8 @@ public class MenuConsola {
             System.out.println(p);
         }
         int id = leerEntero("Numero de pedido: ");
-        pedidos.avanzarEstado(id);
-        Pedido actualizado = pedidos.buscarPorId(id);
-        if (actualizado != null) {
-            System.out.println("Estado actual: " + actualizado.getEstado());
-        }
+        pedidos.avanzarEstado(id);   // Los notificadores (Observer) imprimen sus avisos
+        System.out.println("Estado actual: " + pedidos.buscarPorId(id).getEstado());
     }
 
     // ================= AYUDAS =================

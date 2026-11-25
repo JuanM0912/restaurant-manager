@@ -1,0 +1,75 @@
+@startuml
+!include estilo.iuml
+title Patrón Decorator (estructural) - personalización de productos
+
+interface ElementoPedido <<Componente>> {
+  +getDescripcion(): String
+  +getPrecio(): long
+}
+abstract class Producto <<ComponenteConcreto>> {
+  -nombre: String
+  -precio: long
+  +getDescripcion(): String
+  +getPrecio(): long
+}
+class Alimento
+class Bebida
+
+abstract class AdicionalDecorador <<Decorador>> {
+  #envuelto: ElementoPedido
+  +getDescripcion(): String
+  +getPrecio(): long
+}
+class ConIngredienteExtra <<DecoradorConcreto>> {
+  -adicional: Adicional
+  +getDescripcion(): String
+  +getPrecio(): long
+}
+class ConTamanoGrande <<DecoradorConcreto>> {
+  +{static} PORCENTAJE_RECARGO: int = 30
+  +getDescripcion(): String
+  +getPrecio(): long
+}
+class ConIndicacion <<DecoradorConcreto>> {
+  -indicacion: String
+  +getDescripcion(): String
+}
+class Adicional {
+  -nombre: String
+  -precio: long
+}
+class ServicioMenu <<Cliente>> {
+  +personalizar(producto, extras, grande, indicacion): ElementoPedido
+}
+class ItemPedido <<Cliente>> {
+  -elemento: ElementoPedido
+  -cantidad: int
+  +getSubtotal(): long
+}
+
+ElementoPedido <|.. Producto
+Producto <|-- Alimento
+Producto <|-- Bebida
+ElementoPedido <|.. AdicionalDecorador
+AdicionalDecorador o-- "1" ElementoPedido : envuelto
+AdicionalDecorador <|-- ConIngredienteExtra
+AdicionalDecorador <|-- ConTamanoGrande
+AdicionalDecorador <|-- ConIndicacion
+ConIngredienteExtra --> Adicional
+ServicioMenu ..> AdicionalDecorador : <<crea>>
+ItemPedido --> ElementoPedido
+
+note right of ConIngredienteExtra
+  getPrecio() = envuelto.getPrecio() + adicional.getPrecio()
+  getDescripcion() = envuelto.getDescripcion() + " + Queso"
+end note
+note bottom of ServicioMenu
+  Ejemplo:
+  Hamburguesa ($25.000)
+   -> + Queso extra ($3.000)
+   -> + Tocineta ($4.000)
+   -> (grande) x1,3
+   -> [sin cebolla]
+  Total: $41.600 por unidad
+end note
+@enduml

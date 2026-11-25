@@ -1,0 +1,224 @@
+@startuml
+!include estilo.iuml
+title Restaurant Manager - Diagrama de clases general
+skinparam nodesep 25
+skinparam ranksep 40
+
+package "consola" {
+  class AppConsola {
+    +{static} main(args: String[])
+  }
+  class MenuConsola {
+    +iniciar()
+  }
+}
+
+package "gui" {
+  class AppGUI {
+    +{static} main(args: String[])
+  }
+  class VentanaPrincipal
+  interface Refrescable {
+    +refrescar()
+  }
+  class PanelTomarPedido
+  class PanelCocina
+  class PanelPedidos
+  class PanelMenu
+  class PanelReportes
+  class Estilo
+}
+
+package "servicio" {
+  class Sistema {
+    +getServicioMenu(): ServicioMenu
+    +getServicioPedidos(): ServicioPedidos
+    +getServicioReportes(): ServicioReportes
+  }
+  class ServicioMenu {
+    +listarProductos(): List<Producto>
+    +listarPorCategoria(c: String): List<Producto>
+    +registrarProducto(tipo, nombre, categoria, precio, valor): Producto
+    +cambiarPrecio(codigo: String, precio: long)
+    +cambiarDisponibilidad(codigo: String, disponible: boolean)
+    +personalizar(p: Producto, extras, grande, indicacion): ElementoPedido
+  }
+  class ServicioPedidos {
+    +agregarObservador(o: ObservadorPedido)
+    +nuevoPedido(mesa: int): Pedido
+    +registrarPedido(p: Pedido)
+    +cambiarCantidad(id: int, item: int, cantidad: int)
+    +avanzarEstado(id: int)
+    +listarPedidos(): List<Pedido>
+    -notificar(p, anterior, nuevo)
+  }
+  class ServicioReportes {
+    +totalVendido(fecha: LocalDate): long
+    +masVendidos(n: int): List<String>
+    +cierreDeCaja(fecha: LocalDate): String
+  }
+}
+
+package "modelo" {
+  interface ElementoPedido {
+    +getDescripcion(): String
+    +getPrecio(): long
+  }
+  abstract class Producto {
+    -codigo: String
+    -nombre: String
+    -categoria: String
+    -precio: long
+    -disponible: boolean
+    +{abstract} getTipo(): String
+    +{abstract} getDetalle(): String
+  }
+  class Alimento {
+    -minutosPreparacion: int
+  }
+  class Bebida {
+    -volumenMl: int
+  }
+  class Adicional {
+    -nombre: String
+    -precio: long
+  }
+  class Pedido {
+    -id: int
+    -mesa: int
+    -fechaHora: LocalDateTime
+    +agregarItem(e: ElementoPedido, cantidad: int)
+    +getSubtotal(): long
+    +getDescuento(): long
+    +getTotal(): long
+    +cambiarEstado(nuevo: EstadoPedido)
+  }
+  class ItemPedido {
+    -cantidad: int
+    +getSubtotal(): long
+  }
+  enum EstadoPedido {
+    PENDIENTE
+    EN_PREPARACION
+    LISTO
+    ENTREGADO
+    +siguiente(): EstadoPedido
+  }
+}
+
+package "patrones" {
+  package "fabrica" {
+    abstract class CreadorProducto
+    class CreadorAlimento
+    class CreadorBebida
+  }
+  package "decorador" {
+    abstract class AdicionalDecorador
+    class ConIngredienteExtra
+    class ConTamanoGrande
+    class ConIndicacion
+  }
+  package "estrategia" {
+    interface EstrategiaDescuento
+    class SinDescuento
+    class DescuentoPorcentual
+    class DescuentoPorHorario
+    class DescuentoPorDia
+  }
+  package "observador" {
+    interface ObservadorPedido
+    abstract class NotificadorBase
+    class NotificadorCocina
+    class NotificadorMesero
+    class NotificadorCaja
+  }
+}
+
+package "persistencia" {
+  class ArchivoCSV {
+    +{static} leer(ruta: String): List<String[]>
+    +{static} escribir(ruta, encabezado, filas)
+  }
+  class ProductoCSV
+  class AdicionalCSV
+  class PedidoCSV
+  class ElementoGuardado
+}
+
+' --- Arranque: las dos interfaces usan el mismo Sistema ---
+AppConsola ..> Sistema : crea
+AppGUI ..> Sistema : crea
+AppConsola ..> MenuConsola
+AppGUI ..> VentanaPrincipal
+MenuConsola --> ServicioMenu
+MenuConsola --> ServicioPedidos
+MenuConsola --> ServicioReportes
+VentanaPrincipal *-- PanelTomarPedido
+VentanaPrincipal *-- PanelCocina
+VentanaPrincipal *-- PanelPedidos
+VentanaPrincipal *-- PanelMenu
+VentanaPrincipal *-- PanelReportes
+Refrescable <|.. PanelTomarPedido
+Refrescable <|.. PanelMenu
+Refrescable <|.. PanelReportes
+PanelTomarPedido --> ServicioMenu
+PanelTomarPedido --> ServicioPedidos
+PanelMenu --> ServicioMenu
+PanelReportes --> ServicioReportes
+PanelCocina --> ServicioPedidos
+PanelPedidos --> ServicioPedidos
+
+Sistema *-- ServicioMenu
+Sistema *-- ServicioPedidos
+Sistema *-- ServicioReportes
+ServicioReportes --> ServicioPedidos
+
+' --- Modelo ---
+ElementoPedido <|.. Producto
+Producto <|-- Alimento
+Producto <|-- Bebida
+Pedido "1" *-- "1..*" ItemPedido
+ItemPedido --> "1" ElementoPedido
+Pedido --> EstadoPedido
+Pedido --> "1" EstrategiaDescuento : promocion
+
+' --- Factory Method ---
+CreadorProducto <|-- CreadorAlimento
+CreadorProducto <|-- CreadorBebida
+CreadorProducto ..> Producto : crea
+ServicioMenu o-- "1..*" CreadorProducto
+
+' --- Decorator ---
+ElementoPedido <|.. AdicionalDecorador
+AdicionalDecorador o-- "1" ElementoPedido : envuelto
+AdicionalDecorador <|-- ConIngredienteExtra
+AdicionalDecorador <|-- ConTamanoGrande
+AdicionalDecorador <|-- ConIndicacion
+ConIngredienteExtra --> Adicional
+ServicioMenu ..> AdicionalDecorador : usa
+
+' --- Strategy ---
+EstrategiaDescuento <|.. SinDescuento
+EstrategiaDescuento <|.. DescuentoPorcentual
+EstrategiaDescuento <|.. DescuentoPorHorario
+EstrategiaDescuento <|.. DescuentoPorDia
+
+' --- Observer ---
+ServicioPedidos o-- "0..*" ObservadorPedido : observadores
+ObservadorPedido <|.. NotificadorBase
+NotificadorBase <|-- NotificadorCocina
+NotificadorBase <|-- NotificadorMesero
+NotificadorBase <|-- NotificadorCaja
+ObservadorPedido <|.. PanelCocina
+ObservadorPedido <|.. PanelPedidos
+
+' --- Persistencia ---
+ServicioMenu --> ProductoCSV
+ServicioMenu --> AdicionalCSV
+ServicioPedidos --> PedidoCSV
+ProductoCSV ..> ArchivoCSV
+AdicionalCSV ..> ArchivoCSV
+PedidoCSV ..> ArchivoCSV
+PedidoCSV ..> ElementoGuardado : crea al cargar
+ElementoPedido <|.. ElementoGuardado
+@enduml

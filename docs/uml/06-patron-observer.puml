@@ -1,0 +1,84 @@
+@startuml
+!include estilo.iuml
+title Patrón Observer (comportamiento) - avisos por cambio de estado del pedido
+
+class ServicioPedidos <<Sujeto>> {
+  -observadores: List<ObservadorPedido>
+  +agregarObservador(o: ObservadorPedido)
+  +quitarObservador(o: ObservadorPedido)
+  -notificar(p: Pedido, anterior: EstadoPedido, nuevo: EstadoPedido)
+  +registrarPedido(p: Pedido)
+  +avanzarEstado(id: int)
+}
+
+interface ObservadorPedido <<Observador>> {
+  +estadoCambiado(p: Pedido, anterior: EstadoPedido, nuevo: EstadoPedido)
+}
+abstract class NotificadorBase {
+  -area: String
+  -mensajes: List<String>
+  #avisar(mensaje: String)
+  +getMensajes(): List<String>
+}
+class NotificadorCocina <<ObservadorConcreto>> {
+  +estadoCambiado(...)
+}
+class NotificadorMesero <<ObservadorConcreto>> {
+  +estadoCambiado(...)
+}
+class NotificadorCaja <<ObservadorConcreto>> {
+  +estadoCambiado(...)
+}
+class PanelCocina <<ObservadorConcreto>> {
+  +estadoCambiado(...)
+  +refrescar()
+}
+class PanelPedidos <<ObservadorConcreto>> {
+  +estadoCambiado(...)
+  +refrescar()
+}
+class Pedido {
+  -estado: EstadoPedido
+  +cambiarEstado(nuevo: EstadoPedido)
+}
+enum EstadoPedido {
+  PENDIENTE
+  EN_PREPARACION
+  LISTO
+  ENTREGADO
+}
+class Sistema
+class VentanaPrincipal
+
+ServicioPedidos o--> "0..*" ObservadorPedido : observadores
+ServicioPedidos --> "0..*" Pedido
+Pedido --> EstadoPedido
+ObservadorPedido <|.. NotificadorBase
+NotificadorBase <|-- NotificadorCocina
+NotificadorBase <|-- NotificadorMesero
+NotificadorBase <|-- NotificadorCaja
+ObservadorPedido <|.. PanelCocina
+ObservadorPedido <|.. PanelPedidos
+Sistema ..> NotificadorCocina : registra
+Sistema ..> NotificadorMesero : registra
+Sistema ..> NotificadorCaja : registra
+VentanaPrincipal ..> PanelCocina : registra
+VentanaPrincipal ..> PanelPedidos : registra
+
+note right of ServicioPedidos
+  notificar() recorre la lista y llama
+  estadoCambiado() en cada observador.
+  No sabe si es cocina, caja o una pantalla.
+end note
+note bottom of NotificadorCocina
+  Reacciona a PENDIENTE
+  (pedido nuevo)
+end note
+note bottom of NotificadorMesero
+  Reacciona a LISTO
+end note
+note bottom of NotificadorCaja
+  Reacciona a ENTREGADO
+  (cobrar)
+end note
+@enduml

@@ -1,0 +1,95 @@
+@startuml
+!include estilo.iuml
+skinparam sequenceParticipantBorderColor #2E7D6B
+skinparam sequenceParticipantBackgroundColor #E3F4EF
+skinparam sequenceLifeLineBorderColor #888888
+skinparam sequenceGroupBorderColor #2E7D6B
+title Diagrama de secuencia - Flujo principal: tomar y confirmar un pedido\n(participan Decorator, Strategy y Observer)
+
+actor Mesero
+participant ":PanelTomarPedido" as UI
+participant ":ServicioMenu" as SM
+participant "hamburguesa\n:Alimento" as Prod
+participant ":ConIngredienteExtra" as Deco
+participant ":ServicioPedidos" as SP
+participant "pedido\n:Pedido" as Ped
+participant ":DescuentoPorHorario" as Est
+participant ":PedidoCSV" as CSV
+participant ":NotificadorCocina" as Coc
+participant ":PanelCocina" as PC
+
+== Pedido nuevo para la mesa ==
+UI -> SP : nuevoPedido(mesa)
+activate SP
+SP -> Ped ** : new Pedido(id, mesa)
+SP --> UI : pedido
+deactivate SP
+
+== Agregar un producto personalizado (Decorator) ==
+Mesero -> UI : clic "Agregar" en Hamburguesa,\nelige "Queso extra", cantidad 2
+activate UI
+UI -> SM : personalizar(hamburguesa, [Queso], false, "")
+activate SM
+SM -> Deco ** : new ConIngredienteExtra(hamburguesa, queso)
+SM --> UI : elemento : ElementoPedido
+deactivate SM
+UI -> Ped : agregarItem(elemento, 2)
+activate Ped
+Ped -> Ped : new ItemPedido(elemento, 2)
+deactivate Ped
+UI -> Ped : getTotal()
+activate Ped
+Ped -> Deco : getPrecio()
+activate Deco
+Deco -> Prod : getPrecio()
+Prod --> Deco : 25000
+Deco --> Ped : 25000 + 3000
+deactivate Deco
+Ped --> UI : total
+deactivate Ped
+deactivate UI
+
+== Elegir promoción (Strategy) ==
+Mesero -> UI : elige "Happy hour"
+activate UI
+UI -> Ped : setPromocion(happyHour)
+UI -> Ped : getTotal()
+activate Ped
+Ped -> Ped : getSubtotal()
+Ped -> Est : calcularDescuento(subtotal, fechaHora)
+activate Est
+Est --> Ped : descuento (20% si 15:00-17:00, si no 0)
+deactivate Est
+Ped --> UI : subtotal - descuento
+deactivate Ped
+deactivate UI
+
+== Confirmar pedido (Observer) ==
+Mesero -> UI : clic "Confirmar pedido"
+activate UI
+UI -> SP : registrarPedido(pedido)
+activate SP
+SP -> Ped : estaVacio()
+Ped --> SP : false
+SP -> CSV : guardar(pedidos)
+activate CSV
+CSV -> CSV : ArchivoCSV.escribir(...)
+deactivate CSV
+SP -> SP : notificar(pedido, null, PENDIENTE)
+activate SP
+loop por cada observador registrado
+  SP -> Coc : estadoCambiado(pedido, null, PENDIENTE)
+  activate Coc
+  Coc -> Coc : avisar("Nuevo pedido #N de la mesa M")
+  deactivate Coc
+  SP -> PC : estadoCambiado(pedido, null, PENDIENTE)
+  activate PC
+  PC -> PC : refrescar()
+  deactivate PC
+end
+deactivate SP
+SP --> UI
+deactivate SP
+UI --> Mesero : "Pedido #N enviado a cocina"
+deactivate UI
+@enduml

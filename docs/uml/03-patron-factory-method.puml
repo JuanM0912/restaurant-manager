@@ -1,0 +1,68 @@
+@startuml
+!include estilo.iuml
+title Patrón Factory Method (creacional) - creación de productos del menú
+
+abstract class Producto <<Producto>> {
+  -codigo: String
+  -nombre: String
+  -categoria: String
+  -precio: long
+  +{abstract} getTipo(): String
+  +{abstract} getValorEspecifico(): int
+  +{abstract} getDetalle(): String
+}
+class Alimento <<ProductoConcreto>> {
+  -minutosPreparacion: int
+  +getTipo(): String
+  +getDetalle(): String
+}
+class Bebida <<ProductoConcreto>> {
+  -volumenMl: int
+  +getTipo(): String
+  +getDetalle(): String
+}
+
+abstract class CreadorProducto <<Creador>> {
+  #{abstract} crearProducto(codigo, nombre, categoria, precio, valorEspecifico): Producto
+  +{abstract} getTipo(): String
+  +{abstract} getEtiquetaValorEspecifico(): String
+  +registrar(codigo, nombre, categoria, precio, valorEspecifico): Producto
+}
+class CreadorAlimento <<CreadorConcreto>> {
+  #crearProducto(...): Producto
+  +getTipo(): String
+  +getEtiquetaValorEspecifico(): String
+}
+class CreadorBebida <<CreadorConcreto>> {
+  #crearProducto(...): Producto
+  +getTipo(): String
+  +getEtiquetaValorEspecifico(): String
+}
+
+class ServicioMenu <<Cliente>> {
+  -creadores: Map<String, CreadorProducto>
+  +registrarProducto(tipo, nombre, categoria, precio, valor): Producto
+  -cargarProductos()
+}
+
+Producto <|-- Alimento
+Producto <|-- Bebida
+CreadorProducto <|-- CreadorAlimento
+CreadorProducto <|-- CreadorBebida
+CreadorAlimento ..> Alimento : <<crea>>
+CreadorBebida ..> Bebida : <<crea>>
+CreadorProducto ..> Producto
+ServicioMenu o-- "1..*" CreadorProducto
+
+note right of CreadorProducto
+  registrar() valida nombre, categoría y precio
+  y luego llama a crearProducto(), el
+  "factory method" que cada subclase implementa.
+end note
+note bottom of ServicioMenu
+  Busca el creador por tipo ("ALIMENTO", "BEBIDA")
+  y nunca hace new Alimento(...) ni new Bebida(...).
+  Nuevo tipo (ej. Postre) = nueva subclase de
+  Producto + nuevo creador registrado en Sistema.
+end note
+@enduml

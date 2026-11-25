@@ -1,0 +1,64 @@
+@startuml
+!include estilo.iuml
+title Restaurant Manager - Diagrama de casos de uso
+left to right direction
+skinparam actorStyle awesome
+skinparam usecaseBorderColor #2E7D6B
+skinparam usecaseBackgroundColor #E3F4EF
+
+actor "Administrador" as Admin
+actor "Mesero" as Mesero
+actor "Cocina" as Cocina
+actor "Cajero" as Cajero
+
+rectangle "Restaurant Manager" {
+  package "Menú" {
+    usecase "Registrar producto\n(alimento o bebida)" as UC01
+    usecase "Consultar menú\n(todo, por categoría o nombre)" as UC02
+    usecase "Cambiar precio" as UC03
+    usecase "Cambiar disponibilidad" as UC04
+  }
+  package "Pedidos" {
+    usecase "Crear pedido\npara una mesa" as UC05
+    usecase "Personalizar producto\n(adicionales, tamaño, indicación)" as UC06
+    usecase "Aplicar promoción" as UC07
+    usecase "Modificar cantidades\no quitar productos" as UC08
+    usecase "Consultar pedidos" as UC09
+    usecase "Calcular subtotal,\ndescuento y total" as UC10
+  }
+  package "Estados y avisos" {
+    usecase "Avanzar estado\ndel pedido" as UC11
+    usecase "Recibir aviso de\ncambio de estado" as UC12
+  }
+  package "Reportes" {
+    usecase "Generar cierre de caja" as UC13
+    usecase "Ver productos\nmás vendidos" as UC14
+  }
+}
+
+Admin --> UC01
+Admin --> UC02
+Admin --> UC03
+Admin --> UC04
+
+Mesero --> UC02
+Mesero --> UC05
+Mesero --> UC08
+Mesero --> UC09
+
+UC05 ..> UC10 : <<include>>
+UC06 ..> UC05 : <<extend>>
+UC07 ..> UC05 : <<extend>>
+UC08 ..> UC10 : <<include>>
+
+Cocina --> UC11
+Mesero --> UC11
+UC11 ..> UC12 : <<include>>
+UC12 <-- Cocina
+UC12 <-- Mesero
+UC12 <-- Cajero
+
+Cajero --> UC13
+Cajero --> UC09
+UC14 ..> UC13 : <<extend>>
+@enduml

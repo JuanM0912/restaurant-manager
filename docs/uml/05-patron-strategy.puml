@@ -1,0 +1,68 @@
+@startuml
+!include estilo.iuml
+title Patrón Strategy (comportamiento) - promociones y descuentos
+
+class Pedido <<Contexto>> {
+  -fechaHora: LocalDateTime
+  -promocion: EstrategiaDescuento
+  +setPromocion(p: EstrategiaDescuento)
+  +getSubtotal(): long
+  +getDescuento(): long
+  +getTotal(): long
+}
+
+interface EstrategiaDescuento <<Estrategia>> {
+  +getNombre(): String
+  +calcularDescuento(subtotal: long, momento: LocalDateTime): long
+}
+class SinDescuento <<EstrategiaConcreta>> {
+  +calcularDescuento(...): long
+}
+class DescuentoPorcentual <<EstrategiaConcreta>> {
+  -nombre: String
+  -porcentaje: int
+  +calcularDescuento(...): long
+}
+class DescuentoPorHorario <<EstrategiaConcreta>> {
+  -nombre: String
+  -porcentaje: int
+  -horaInicio: LocalTime
+  -horaFin: LocalTime
+  +calcularDescuento(...): long
+}
+class DescuentoPorDia <<EstrategiaConcreta>> {
+  -nombre: String
+  -porcentaje: int
+  -dia: DayOfWeek
+  +calcularDescuento(...): long
+}
+class Sistema {
+  registra la lista de promociones
+}
+class ServicioPedidos {
+  -promociones: List<EstrategiaDescuento>
+  +getPromociones(): List<EstrategiaDescuento>
+  +aplicarPromocion(id: int, p: EstrategiaDescuento)
+}
+
+Pedido o--> "1" EstrategiaDescuento : promocion
+EstrategiaDescuento <|.. SinDescuento
+EstrategiaDescuento <|.. DescuentoPorcentual
+EstrategiaDescuento <|.. DescuentoPorHorario
+EstrategiaDescuento <|.. DescuentoPorDia
+ServicioPedidos o-- "1..*" EstrategiaDescuento
+Sistema ..> ServicioPedidos : entrega las promociones
+
+note right of Pedido
+  getDescuento() =
+    promocion.calcularDescuento(getSubtotal(), fechaHora)
+  getTotal() = getSubtotal() - getDescuento()
+  Pedido no sabe qué promoción es.
+end note
+note bottom of DescuentoPorHorario
+  Happy hour 15:00-17:00 (20%)
+end note
+note bottom of DescuentoPorDia
+  Martes de descuento (15%)
+end note
+@enduml

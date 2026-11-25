@@ -1,0 +1,56 @@
+@startuml
+!include estilo.iuml
+skinparam sequenceParticipantBorderColor #2E7D6B
+skinparam sequenceParticipantBackgroundColor #E3F4EF
+skinparam sequenceGroupBorderColor #2E7D6B
+title Diagrama de secuencia - Avanzar estado de un pedido (Observer)
+
+actor Cocina
+participant ":PanelCocina" as PC
+participant ":ServicioPedidos" as SP
+participant "pedido\n:Pedido" as Ped
+participant ":EstadoPedido" as Est
+participant ":PedidoCSV" as CSV
+participant ":NotificadorMesero" as Mes
+participant ":NotificadorCaja" as Caj
+
+Cocina -> PC : clic "Pasar a: Listo"
+activate PC
+PC -> SP : avanzarEstado(id)
+activate SP
+SP -> SP : buscarPorId(id)
+SP -> Est : getEstado().siguiente()
+Est --> SP : LISTO
+SP -> SP : cambiarEstado(id, LISTO)
+activate SP
+SP -> Ped : cambiarEstado(LISTO)
+activate Ped
+Ped -> Est : puedeCambiarA(LISTO)
+Est --> Ped : true
+alt transición no permitida
+  Ped --> SP : IllegalStateException
+  SP --> PC : excepción
+  PC -> PC : Estilo.mostrarError(...)
+else transición válida
+  Ped --> SP
+  deactivate Ped
+  SP -> CSV : guardar(pedidos)
+  SP -> SP : notificar(pedido, EN_PREPARACION, LISTO)
+  loop por cada observador
+    SP -> Mes : estadoCambiado(pedido, EN_PREPARACION, LISTO)
+    activate Mes
+    Mes -> Mes : avisar("El pedido #N está listo...")
+    deactivate Mes
+    SP -> Caj : estadoCambiado(pedido, EN_PREPARACION, LISTO)
+    activate Caj
+    note right of Caj : No reacciona:\nsolo le interesa ENTREGADO
+    deactivate Caj
+    SP -> PC : estadoCambiado(pedido, EN_PREPARACION, LISTO)
+    PC -> PC : refrescar()
+  end
+end
+deactivate SP
+SP --> PC
+deactivate SP
+deactivate PC
+@enduml

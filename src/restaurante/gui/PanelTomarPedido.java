@@ -1,6 +1,8 @@
 package restaurante.gui;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
@@ -8,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import javax.swing.BorderFactory;
+import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
@@ -34,8 +37,8 @@ import restaurante.servicio.ServicioMenu;
 import restaurante.servicio.ServicioPedidos;
 
 /**
- * Pantalla para tomar pedidos (parecida a la imagen de referencia):
- * filtros por categoria, tarjetas de productos y, a la derecha, el pedido actual.
+ * Pantalla para tomar pedidos: filtros por categoria, tarjetas de productos
+ * y, a la derecha, el pedido actual con la estetica vino/borgona.
  */
 public class PanelTomarPedido extends JPanel implements Refrescable {
 
@@ -45,7 +48,7 @@ public class PanelTomarPedido extends JPanel implements Refrescable {
     private Pedido pedidoActual;
     private String categoriaElegida = null;   // null = todas
 
-    private final JPanel panelCategorias = new JPanel(new FlowLayout(FlowLayout.LEFT));
+    private final JPanel panelCategorias = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
     private final JPanel cuadricula = new JPanel(new GridLayout(0, 3, 12, 12));
     private final JTextField buscador = new JTextField(18);
 
@@ -60,9 +63,9 @@ public class PanelTomarPedido extends JPanel implements Refrescable {
     public PanelTomarPedido(ServicioMenu menu, ServicioPedidos pedidos) {
         this.menu = menu;
         this.pedidos = pedidos;
-        setLayout(new BorderLayout(12, 12));
-        setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
-        setBackground(Estilo.FONDO);
+        setLayout(new BorderLayout(14, 14));
+        setBorder(BorderFactory.createEmptyBorder(14, 16, 14, 16));
+        setBackground(Estilo.BLANCO_CALIDO);
 
         add(crearZonaProductos(), BorderLayout.CENTER);
         add(crearZonaPedido(), BorderLayout.EAST);
@@ -75,18 +78,27 @@ public class PanelTomarPedido extends JPanel implements Refrescable {
     // ===================== Zona izquierda: productos =====================
 
     private JPanel crearZonaProductos() {
-        JPanel zona = new JPanel(new BorderLayout(8, 8));
+        JPanel zona = new JPanel(new BorderLayout(10, 10));
         zona.setOpaque(false);
 
-        JPanel barra = new JPanel(new BorderLayout());
+        JPanel barra = new JPanel(new BorderLayout(10, 6));
         barra.setOpaque(false);
         panelCategorias.setOpaque(false);
         barra.add(panelCategorias, BorderLayout.CENTER);
-        JPanel zonaBuscar = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+
+        JPanel zonaBuscar = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 4));
         zonaBuscar.setOpaque(false);
-        zonaBuscar.add(new JLabel("Buscar:"));
+        JLabel lblBuscar = Estilo.etiqueta("Buscar:", Estilo.NEGRITA);
+        buscador.setFont(Estilo.NORMAL);
+        buscador.setBackground(Color.WHITE);
+        buscador.setForeground(Estilo.TEXTO);
+        buscador.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(Estilo.ROSA_EMPOLVADO, 2),
+                BorderFactory.createEmptyBorder(5, 8, 5, 8)));
+        zonaBuscar.add(lblBuscar);
         zonaBuscar.add(buscador);
         barra.add(zonaBuscar, BorderLayout.EAST);
+
         buscador.getDocument().addDocumentListener(new DocumentListener() {
             public void insertUpdate(DocumentEvent e) { mostrarProductos(); }
             public void removeUpdate(DocumentEvent e) { mostrarProductos(); }
@@ -97,8 +109,12 @@ public class PanelTomarPedido extends JPanel implements Refrescable {
         JPanel contenedor = new JPanel(new BorderLayout());   // evita que las tarjetas se estiren
         contenedor.setOpaque(false);
         contenedor.add(cuadricula, BorderLayout.NORTH);
+
         JScrollPane scroll = new JScrollPane(contenedor);
-        scroll.setBorder(null);
+        scroll.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(Estilo.ROSA_EMPOLVADO, 2),
+                BorderFactory.createEmptyBorder(10, 10, 10, 10)));
+        scroll.getViewport().setBackground(Estilo.BLANCO_CALIDO);
         scroll.getVerticalScrollBar().setUnitIncrement(16);
 
         zona.add(barra, BorderLayout.NORTH);
@@ -118,7 +134,7 @@ public class PanelTomarPedido extends JPanel implements Refrescable {
 
     private JButton botonCategoria(String texto, String categoria) {
         boolean elegida = (categoria == null) ? categoriaElegida == null : categoria.equals(categoriaElegida);
-        JButton boton = elegida ? Estilo.botonPrincipal(texto) : new JButton(texto);
+        JButton boton = elegida ? Estilo.botonAccionPequeno(texto) : Estilo.botonSecundario(texto);
         boton.addActionListener(e -> {
             categoriaElegida = categoria;
             mostrarCategorias();
@@ -149,19 +165,31 @@ public class PanelTomarPedido extends JPanel implements Refrescable {
         Estilo.tarjeta(tarjeta);
 
         JLabel nombre = Estilo.etiqueta(p.getNombre(), Estilo.SUBTITULO);
+        nombre.setAlignmentX(Component.LEFT_ALIGNMENT);
+
         JLabel info = Estilo.etiqueta(p.getCategoria() + "  •  " + p.getDetalle(), Estilo.NORMAL);
         info.setForeground(Estilo.TEXTO_SUAVE);
-        JLabel precio = Estilo.etiqueta(Estilo.pesos(p.getPrecio()), Estilo.SUBTITULO);
-        precio.setForeground(Estilo.VERDE);
+        info.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        JButton agregar = p.isDisponible() ? Estilo.botonPrincipal("Agregar") : new JButton("Agotado");
+        JLabel precio = Estilo.etiqueta(Estilo.pesos(p.getPrecio()), Estilo.PRECIO);
+        precio.setForeground(Estilo.VINO_OSCURO);
+        precio.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JButton agregar = p.isDisponible() ? Estilo.botonAccionPequeno("Agregar") : Estilo.botonSecundario("Agotado");
         agregar.setEnabled(p.isDisponible());
+        agregar.setAlignmentX(Component.LEFT_ALIGNMENT);
+        if (p.isDisponible()) {
+            agregar.setIcon(Estilo.iconoCarrito(14, Color.WHITE));
+            agregar.setIconTextGap(6);
+        }
         agregar.addActionListener(e -> agregarProducto(p));
 
         tarjeta.add(nombre);
+        tarjeta.add(Box.createVerticalStrut(3));
         tarjeta.add(info);
+        tarjeta.add(Box.createVerticalStrut(6));
         tarjeta.add(precio);
-        tarjeta.add(javax.swing.Box.createVerticalStrut(8));
+        tarjeta.add(Box.createVerticalStrut(10));
         tarjeta.add(agregar);
         return tarjeta;
     }
@@ -214,61 +242,97 @@ public class PanelTomarPedido extends JPanel implements Refrescable {
     // ===================== Zona derecha: pedido actual =====================
 
     private JPanel crearZonaPedido() {
-        JPanel zona = new JPanel(new BorderLayout(8, 8));
-        Estilo.tarjeta(zona);
+        JPanel zona = new JPanel(new BorderLayout());
+        zona.setOpaque(true);
+        zona.setBackground(Color.WHITE);
+        zona.setBorder(BorderFactory.createLineBorder(Estilo.ROSA_EMPOLVADO, 2));
         zona.setPreferredSize(new Dimension(380, 0));
 
-        JPanel arriba = new JPanel();
-        arriba.setOpaque(false);
-        arriba.setLayout(new BoxLayout(arriba, BoxLayout.Y_AXIS));
-        arriba.add(Estilo.etiqueta("Pedido actual", Estilo.TITULO));
-        JPanel filaMesa = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        filaMesa.setOpaque(false);
-        filaMesa.add(new JLabel("Mesa:"));
-        filaMesa.add(mesa);
-        arriba.add(filaMesa);
+        // Encabezado degradado vino/borgona con icono de portapapeles
+        JPanel cabecera = Estilo.bannerVino(false);
+        cabecera.setLayout(new FlowLayout(FlowLayout.LEFT, 10, 10));
+        JLabel lblTitulo = new JLabel("Pedido actual");
+        lblTitulo.setFont(Estilo.SECCION_BLANCA);
+        lblTitulo.setForeground(Color.WHITE);
+        lblTitulo.setIcon(Estilo.iconoPedido(18, Color.WHITE));
+        lblTitulo.setIconTextGap(8);
+        cabecera.add(lblTitulo);
+        zona.add(cabecera, BorderLayout.NORTH);
 
-        JPanel botonesItem = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        JPanel cuerpo = new JPanel(new BorderLayout(8, 8));
+        cuerpo.setOpaque(true);
+        cuerpo.setBackground(Color.WHITE);
+        cuerpo.setBorder(BorderFactory.createEmptyBorder(12, 14, 14, 14));
+
+        JPanel filaMesa = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        filaMesa.setOpaque(false);
+        filaMesa.add(Estilo.etiqueta("Mesa:", Estilo.NEGRITA));
+        mesa.setFont(Estilo.NEGRITA);
+        filaMesa.add(mesa);
+        cuerpo.add(filaMesa, BorderLayout.NORTH);
+
+        listaItems.setFont(Estilo.NORMAL);
+        listaItems.setForeground(Estilo.TEXTO);
+        listaItems.setSelectionBackground(Estilo.ROSA_EMPOLVADO);
+        listaItems.setSelectionForeground(Estilo.VINO_OSCURO);
+
+        JScrollPane scrollLista = new JScrollPane(listaItems);
+        scrollLista.setBorder(BorderFactory.createLineBorder(Estilo.ROSA_EMPOLVADO, 2));
+
+        JPanel botonesItem = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
         botonesItem.setOpaque(false);
-        JButton menos = new JButton("−");
-        JButton mas = new JButton("+");
-        JButton quitar = new JButton("Quitar");
+        JButton menos = Estilo.botonSecundario("−");
+        JButton mas = Estilo.botonSecundario("+");
+        JButton quitar = Estilo.botonSecundario("Quitar");
         menos.addActionListener(e -> cambiarCantidadSeleccionada(-1));
         mas.addActionListener(e -> cambiarCantidadSeleccionada(+1));
         quitar.addActionListener(e -> quitarSeleccionado());
-        botonesItem.add(new JLabel("Item seleccionado:"));
+        botonesItem.add(Estilo.etiqueta("Item seleccionado:", Estilo.NEGRITA));
         botonesItem.add(menos);
         botonesItem.add(mas);
         botonesItem.add(quitar);
 
-        JPanel centro = new JPanel(new BorderLayout());
+        JPanel centro = new JPanel(new BorderLayout(0, 6));
         centro.setOpaque(false);
-        centro.add(new JScrollPane(listaItems), BorderLayout.CENTER);
+        centro.add(scrollLista, BorderLayout.CENTER);
         centro.add(botonesItem, BorderLayout.SOUTH);
 
-        JPanel abajo = new JPanel(new GridLayout(0, 1, 4, 4));
+        JPanel abajo = new JPanel(new GridLayout(0, 1, 5, 5));
         abajo.setOpaque(false);
         for (EstrategiaDescuento promo : pedidos.getPromociones()) {
             comboPromo.addItem(promo);
         }
+        comboPromo.setFont(Estilo.NORMAL);
+        comboPromo.setBackground(Estilo.GRIS_SUAVE);
+        comboPromo.setForeground(Estilo.TEXTO);
         comboPromo.addActionListener(e -> {
             pedidoActual.setPromocion((EstrategiaDescuento) comboPromo.getSelectedItem());
             actualizarPedido();
         });
-        abajo.add(new JLabel("Promocion:"));
+
+        lblSubtotal.setFont(Estilo.NEGRITA);
+        lblSubtotal.setForeground(Estilo.TEXTO);
+        lblDescuento.setFont(Estilo.NEGRITA);
+        lblDescuento.setForeground(Estilo.TEXTO_SUAVE);
+        lblTotal.setFont(Estilo.TITULO);
+        lblTotal.setForeground(Estilo.VINO_OSCURO);
+
+        abajo.add(Estilo.etiqueta("Promocion:", Estilo.NEGRITA));
         abajo.add(comboPromo);
         abajo.add(lblSubtotal);
         abajo.add(lblDescuento);
-        lblTotal.setFont(Estilo.TITULO);
         abajo.add(lblTotal);
+
         JButton confirmar = Estilo.botonPrincipal("Confirmar pedido");
+        confirmar.setIcon(Estilo.iconoCheck(15, Color.WHITE));
+        confirmar.setIconTextGap(8);
         confirmar.setPreferredSize(new Dimension(0, 42));
         confirmar.addActionListener(e -> confirmarPedido());
         abajo.add(confirmar);
 
-        zona.add(arriba, BorderLayout.NORTH);
-        zona.add(centro, BorderLayout.CENTER);
-        zona.add(abajo, BorderLayout.SOUTH);
+        cuerpo.add(centro, BorderLayout.CENTER);
+        cuerpo.add(abajo, BorderLayout.SOUTH);
+        zona.add(cuerpo, BorderLayout.CENTER);
         return zona;
     }
 

@@ -41,6 +41,8 @@ Imagina que por un día a la semana le vas a poner a tus hamburguesas una promoc
 | Creadores concretos | `CreadorAlimento`, `CreadorBebida` |
 | Cliente | `ServicioMenu` (registra y carga productos sin `new Alimento` directos) |
 
+
+![Factory Method](03-patron-factory-method.png)
 - ✍️ Descripcion del patron con palabras propias.
 Este patrón nos sirve para delegar o ayudarnos en el proceso de creación de los objetos en clases específicas directamente donde los vamos a utilizar, de manera que el sistema trabaje sobre una misma estructura y, a la hora de querer anexar cambios o mejoras, nos permita hacerlo simplemente creando una nueva clase propia, sin tener que reescribir todas las líneas del código anterior; este patrón nos permite un código con más alcance y más escalable, con mayor facilidad a mejoras y adaptaciones.
 
@@ -63,6 +65,8 @@ Desventajas: Su mayor desventaja es que aumenta la cantidad de clases que se cre
 | Decoradores concretos | `ConIngredienteExtra`, `ConTamanoGrande`, `ConIndicacion` |
 | Cliente | `ServicioMenu.personalizar()`, `ItemPedido` |
 
+![Patron Decorator](04-patron-decorator.png)
+
 - ✍️ Descripcion del patron con palabras propias (pista: "envolver" como capas de una cebolla).
 Este patrón nos sirve para agregar nuevas funcionalidades a nuestro código principal, de manera que parezca como capas de una cebolla: el código fuente o principal en el núcleo, y cada capa nueva como una capa de la cebolla. Agregamos nuevas funcionalidades sin tocar el núcleo; así podemos anexar comportamientos extras de manera flexible sin alterar el código original.
 - **Alternativa considerada:** guardar una lista de adicionales dentro del item. Es valida, pero cada nuevo tipo de extra (tamano, indicacion) obligaria a cambiar los calculos de `ItemPedido`.
@@ -79,6 +83,9 @@ Desventajas: Puede generar bastantes objetos pequeños envolviéndose entre sí,
 | Estrategia | `EstrategiaDescuento` (interfaz) |
 | Estrategias concretas | `SinDescuento`, `DescuentoPorcentual`, `DescuentoPorHorario`, `DescuentoPorDia` |
 | Contexto | `Pedido` (usa `promocion.calcularDescuento(...)`) |
+
+
+![Patron Strategy](05-patron-strategy.png)
 
 - ✍️ Descripcion del patron con palabras propias.
 Este patrón nos sirve para tener varias formas de solucionar un problema o una misma tarea; es decir, como aplicar distintos tipos de descuentos en clases separadas, todo bajo una misma estructura de código, para que el pedido pueda usar o cambiar las estrategias según las necesidades, sin tener que llenar de condiciones adicionales ni tocar código ya funcional.

@@ -36,7 +36,7 @@ public class ObservadorPedidoTest {
         List<EstrategiaDescuento> promociones = new ArrayList<>();
         promociones.add(new SinDescuento());
         servicio = new ServicioPedidos(
-                new PedidoCSV(carpeta.resolve("pedidos.csv")),
+                new PedidoCSV(carpeta.resolve("pedidos.csv").toString(), carpeta.resolve("items.csv").toString()),
                 promociones);
 
         cocina = new NotificadorCocina();

@@ -1,35 +1,25 @@
 package restaurante.persistencia;
 
-/**
- * Representa un elemento serializado o guardado para persistencia en archivos CSV.
- */
-public class ElementoGuardado {
+import restaurante.modelo.ElementoPedido;
 
-    private final String tipo;
-    private final String identificador;
+/**
+ * Item de un pedido leido desde el CSV. Ya no es un producto con decoradores,
+ * solo guarda la descripcion y el precio que tenia cuando se vendio.
+ * Asi, si manana cambia el precio del menu, los pedidos viejos no cambian.
+ */
+public class ElementoGuardado implements ElementoPedido {
+
     private final String descripcion;
     private final long precio;
 
-    public ElementoGuardado(String tipo, String identificador, String descripcion, long precio) {
-        this.tipo = tipo;
-        this.identificador = identificador;
+    public ElementoGuardado(String descripcion, long precio) {
         this.descripcion = descripcion;
         this.precio = precio;
     }
 
-    public String getTipo() {
-        return tipo;
-    }
+    @Override
+    public String getDescripcion() { return descripcion; }
 
-    public String getIdentificador() {
-        return identificador;
-    }
-
-    public String getDescripcion() {
-        return descripcion;
-    }
-
-    public long getPrecio() {
-        return precio;
-    }
+    @Override
+    public long getPrecio() { return precio; }
 }

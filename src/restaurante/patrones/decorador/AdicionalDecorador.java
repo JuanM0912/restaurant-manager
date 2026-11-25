@@ -1,39 +1,29 @@
 package restaurante.patrones.decorador;
 
-import restaurante.modelo.Adicional;
 import restaurante.modelo.ElementoPedido;
 
+/**
+ * PATRON DECORATOR - rol "Decorador".
+ *
+ * Envuelve un ElementoPedido (un producto u otro decorador) y le agrega algo.
+ * Asi una hamburguesa puede llevar queso, tocineta y "sin cebolla" sin crear
+ * una clase por cada combinacion.
+ */
 public abstract class AdicionalDecorador implements ElementoPedido {
 
-    protected final ElementoPedido elementoBase;
-    protected final Adicional adicional;
+    protected final ElementoPedido envuelto;
 
-    protected AdicionalDecorador(ElementoPedido elementoBase, Adicional adicional) {
-        if (elementoBase == null) {
-            throw new IllegalArgumentException("El elemento base no puede ser nulo.");
+    protected AdicionalDecorador(ElementoPedido envuelto) {
+        if (envuelto == null) {
+            throw new IllegalArgumentException("El decorador necesita un elemento para envolver.");
         }
-        if (adicional == null) {
-            throw new IllegalArgumentException("El adicional no puede ser nulo.");
-        }
-        this.elementoBase = elementoBase;
-        this.adicional = adicional;
+        this.envuelto = envuelto;
     }
 
-    public ElementoPedido getElementoBase() {
-        return elementoBase;
-    }
-
-    public Adicional getAdicional() {
-        return adicional;
-    }
+    // Por defecto delega todo al elemento envuelto. Cada decorador concreto cambia lo que necesita.
+    @Override
+    public String getDescripcion() { return envuelto.getDescripcion(); }
 
     @Override
-    public String getDescripcion() {
-        return elementoBase.getDescripcion() + " + " + adicional.getNombre();
-    }
-
-    @Override
-    public long getPrecio() {
-        return elementoBase.getPrecio() + adicional.getPrecio();
-    }
+    public long getPrecio() { return envuelto.getPrecio(); }
 }

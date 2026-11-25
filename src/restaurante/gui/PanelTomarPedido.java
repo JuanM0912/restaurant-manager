@@ -5,12 +5,9 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 
 import javax.swing.BorderFactory;
-import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
@@ -32,14 +29,12 @@ import restaurante.modelo.ElementoPedido;
 import restaurante.modelo.ItemPedido;
 import restaurante.modelo.Pedido;
 import restaurante.modelo.Producto;
-import restaurante.patrones.decorador.ConIndicacion;
-import restaurante.patrones.decorador.ConTamanoGrande;
 import restaurante.patrones.estrategia.EstrategiaDescuento;
 import restaurante.servicio.ServicioMenu;
 import restaurante.servicio.ServicioPedidos;
 
 /**
- * Pantalla para tomar pedidos:
+ * Pantalla para tomar pedidos (parecida a la imagen de referencia):
  * filtros por categoria, tarjetas de productos y, a la derecha, el pedido actual.
  */
 public class PanelTomarPedido extends JPanel implements Refrescable {
@@ -48,7 +43,7 @@ public class PanelTomarPedido extends JPanel implements Refrescable {
     private final ServicioPedidos pedidos;
 
     private Pedido pedidoActual;
-    private String categoriaElegida = null; // null = todas
+    private String categoriaElegida = null;   // null = todas
 
     private final JPanel panelCategorias = new JPanel(new FlowLayout(FlowLayout.LEFT));
     private final JPanel cuadricula = new JPanel(new GridLayout(0, 3, 12, 12));
@@ -99,7 +94,7 @@ public class PanelTomarPedido extends JPanel implements Refrescable {
         });
 
         cuadricula.setOpaque(false);
-        JPanel contenedor = new JPanel(new BorderLayout());
+        JPanel contenedor = new JPanel(new BorderLayout());   // evita que las tarjetas se estiren
         contenedor.setOpaque(false);
         contenedor.add(cuadricula, BorderLayout.NORTH);
         JScrollPane scroll = new JScrollPane(contenedor);
@@ -111,30 +106,10 @@ public class PanelTomarPedido extends JPanel implements Refrescable {
         return zona;
     }
 
-    private List<String> obtenerCategorias() {
-        Set<String> categorias = new LinkedHashSet<>();
-        for (Producto p : menu.listarProductos()) {
-            if (p.getCategoria() != null && !p.getCategoria().isBlank()) {
-                categorias.add(p.getCategoria());
-            }
-        }
-        return new ArrayList<>(categorias);
-    }
-
-    private List<Producto> filtrarPorCategoria(String categoria) {
-        List<Producto> filtrados = new ArrayList<>();
-        for (Producto p : menu.listarProductos()) {
-            if (categoria.equalsIgnoreCase(p.getCategoria())) {
-                filtrados.add(p);
-            }
-        }
-        return filtrados;
-    }
-
     private void mostrarCategorias() {
         panelCategorias.removeAll();
         panelCategorias.add(botonCategoria("Todos", null));
-        for (String categoria : obtenerCategorias()) {
+        for (String categoria : menu.listarCategorias()) {
             panelCategorias.add(botonCategoria(categoria, categoria));
         }
         panelCategorias.revalidate();
@@ -155,7 +130,7 @@ public class PanelTomarPedido extends JPanel implements Refrescable {
     private void mostrarProductos() {
         List<Producto> lista = (categoriaElegida == null)
                 ? menu.listarProductos()
-                : filtrarPorCategoria(categoriaElegida);
+                : menu.listarPorCategoria(categoriaElegida);
         String texto = buscador.getText().trim().toLowerCase();
 
         cuadricula.removeAll();
@@ -186,11 +161,12 @@ public class PanelTomarPedido extends JPanel implements Refrescable {
         tarjeta.add(nombre);
         tarjeta.add(info);
         tarjeta.add(precio);
-        tarjeta.add(Box.createVerticalStrut(8));
+        tarjeta.add(javax.swing.Box.createVerticalStrut(8));
         tarjeta.add(agregar);
         return tarjeta;
     }
 
+    /** Muestra un cuadro para elegir cantidad y adicionales (Decorator en ServicioMenu). */
     private void agregarProducto(Producto producto) {
         JPanel formulario = new JPanel();
         formulario.setLayout(new BoxLayout(formulario, BoxLayout.Y_AXIS));
@@ -201,6 +177,13 @@ public class PanelTomarPedido extends JPanel implements Refrescable {
         filaCantidad.add(cantidad);
         formulario.add(filaCantidad);
 
+        formulario.add(new JLabel("Adicionales:"));
+        List<JCheckBox> casillas = new ArrayList<>();
+        for (Adicional a : menu.getAdicionales()) {
+            JCheckBox casilla = new JCheckBox(a.toString());
+            casillas.add(casilla);
+            formulario.add(casilla);
+        }
         JCheckBox grande = new JCheckBox("Tamano grande (+30%)");
         formulario.add(grande);
         JTextField indicacion = new JTextField(20);
@@ -212,27 +195,23 @@ public class PanelTomarPedido extends JPanel implements Refrescable {
         if (respuesta != JOptionPane.OK_OPTION) {
             return;
         }
-try {
-            ElementoPedido elemento = producto;
-            if (grande.isSelected()) {
-                long recargoGrande = Math.round(producto.getPrecio() * 0.30);
-                Adicional extraGrande = new Adicional("Tamano grande", recargoGrande);
-                elemento = new ConTamanoGrande(elemento, extraGrande);
+
+        List<Adicional> elegidos = new ArrayList<>();
+        for (int i = 0; i < casillas.size(); i++) {
+            if (casillas.get(i).isSelected()) {
+                elegidos.add(menu.getAdicionales().get(i));
             }
-            String textoIndicacion = indicacion.getText().trim();
-            if (!textoIndicacion.isEmpty()) {
-                Adicional notaCocina = new Adicional(textoIndicacion, 0L);
-                elemento = new ConIndicacion(elemento, notaCocina);
-            }
+        }
+        try {
+            ElementoPedido elemento = menu.personalizar(producto, elegidos, grande.isSelected(), indicacion.getText());
             pedidoActual.agregarItem(elemento, (Integer) cantidad.getValue());
             actualizarPedido();
-       } catch (RuntimeException ex) {
-            String msg = (ex.getMessage() != null && !ex.getMessage().isBlank())
-                    ? ex.getMessage()
-                    : ex.toString();
-            JOptionPane.showMessageDialog(this, msg, "Error", JOptionPane.ERROR_MESSAGE);
+        } catch (RuntimeException ex) {
+            Estilo.mostrarError(this, ex);
         }
     }
+
+    // ===================== Zona derecha: pedido actual =====================
 
     private JPanel crearZonaPedido() {
         JPanel zona = new JPanel(new BorderLayout(8, 8));
@@ -300,7 +279,7 @@ try {
         }
         ItemPedido item = pedidoActual.getItems().get(indice);
         int nueva = item.getCantidad() + cambio;
-        pedidoActual.cambiarCantidad(indice, Math.max(nueva, 0));
+        pedidoActual.cambiarCantidad(indice, Math.max(nueva, 0));   // 0 elimina el item
         actualizarPedido();
         if (indice < modeloItems.size()) {
             listaItems.setSelectedIndex(indice);
@@ -317,7 +296,7 @@ try {
 
     private void confirmarPedido() {
         try {
-            pedidos.registrarPedido(pedidoActual);
+            pedidos.registrarPedido(pedidoActual);   // Aqui se avisa a los observadores
             JOptionPane.showMessageDialog(this, "Pedido #" + pedidoActual.getId() + " enviado a cocina.\n"
                     + "Total: " + Estilo.pesos(pedidoActual.getTotal()));
             nuevoPedido();
@@ -326,10 +305,11 @@ try {
         }
     }
 
+    /** Empieza un pedido en blanco para la mesa elegida. */
     private void nuevoPedido() {
         pedidoActual = pedidos.nuevoPedido((Integer) mesa.getValue());
         if (comboPromo.getItemCount() > 0) {
-            comboPromo.setSelectedIndex(0);
+            comboPromo.setSelectedIndex(0);   // dispara el listener y deja "Sin promocion"
         }
         actualizarPedido();
     }
@@ -337,7 +317,8 @@ try {
     private void actualizarPedido() {
         modeloItems.clear();
         for (ItemPedido item : pedidoActual.getItems()) {
-            modeloItems.addElement(item.toString());
+            modeloItems.addElement(String.format("%d x %s  —  %s",
+                    item.getCantidad(), item.getElemento().getDescripcion(), Estilo.pesos(item.getSubtotal())));
         }
         lblSubtotal.setText("Subtotal: " + Estilo.pesos(pedidoActual.getSubtotal()));
         lblDescuento.setText("Descuento: -" + Estilo.pesos(pedidoActual.getDescuento()));
@@ -348,6 +329,5 @@ try {
     public void refrescar() {
         mostrarCategorias();
         mostrarProductos();
-        actualizarPedido();
     }
 }

@@ -1,12 +1,8 @@
 package restaurante.servicio;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.io.IOException;
-import java.io.UncheckedIOException;
 
 import restaurante.modelo.ElementoPedido;
 import restaurante.modelo.EstadoPedido;
@@ -30,18 +26,13 @@ public class ServicioPedidos {
     private final List<ObservadorPedido> observadores = new ArrayList<>();
     private int siguienteId;
 
-   public ServicioPedidos(PedidoCSV repositorio, List<EstrategiaDescuento> promociones) {
+    public ServicioPedidos(PedidoCSV repositorio, List<EstrategiaDescuento> promociones) {
         this.repositorio = repositorio;
-        this.promociones = (promociones != null)
-                ? new ArrayList<>(promociones)
-                : new ArrayList<>();
-        try {
-            this.pedidos.addAll(repositorio.cargar());
-        } catch (IOException e) {
-            throw new UncheckedIOException("No se pudieron cargar los pedidos", e);
-        }
+        this.promociones = new ArrayList<>(promociones);
+        this.pedidos.addAll(repositorio.cargar(this.promociones));
         this.siguienteId = calcularSiguienteId();
     }
+
     // ---------- Observer: suscripcion y aviso ----------
 
     public void agregarObservador(ObservadorPedido observador) {
@@ -148,11 +139,7 @@ public class ServicioPedidos {
     // ---------- Ayudas privadas ----------
 
     private void guardar() {
-        try {
-            repositorio.guardar(pedidos);
-        } catch (IOException e) {
-            throw new UncheckedIOException("No se pudieron guardar los pedidos", e);
-        }
+        repositorio.guardar(pedidos);
     }
 
     private int calcularSiguienteId() {

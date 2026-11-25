@@ -1,28 +1,44 @@
 package restaurante;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import org.junit.jupiter.api.Test;
 
+import restaurante.modelo.Alimento;
 import restaurante.modelo.Bebida;
 import restaurante.modelo.Producto;
-import restaurante.servicio.ServicioMenu;
+import restaurante.patrones.fabrica.CreadorAlimento;
+import restaurante.patrones.fabrica.CreadorBebida;
+import restaurante.patrones.fabrica.CreadorProducto;
 
-import static org.junit.jupiter.api.Assertions.*;
-
-class CreadorProductoTest {
+/** Pruebas del patron FACTORY METHOD. */
+public class CreadorProductoTest {
 
     @Test
-    void deberiaAgregarBuscarYCambiarDisponibilidadDeProductos() {
-        ServicioMenu menu = new ServicioMenu();
-        Producto bebida = new Bebida("B01", "Jugo Natural", "Bebidas", 6000, 350);
+    void creadorAlimentoFabricaUnAlimento() {
+        CreadorProducto creador = new CreadorAlimento();
+        Producto p = creador.registrar("P100", "Arepa", "Entradas", 6000, 8);
 
-        menu.agregarProducto(bebida);
+        assertInstanceOf(Alimento.class, p);
+        assertEquals("ALIMENTO", p.getTipo());
+        assertEquals("8 min", p.getDetalle());
+    }
 
-        assertEquals(1, menu.listarProductos().size());
-        assertEquals(1, menu.listarDisponibles().size());
-        assertNotNull(menu.buscarPorCodigo("B01"));
-        assertEquals("Jugo Natural", menu.buscarPorCodigo("b01").getDescripcion());
+    @Test
+    void creadorBebidaFabricaUnaBebida() {
+        CreadorProducto creador = new CreadorBebida();
+        Producto p = creador.registrar("P101", "Avena", "Bebidas", 5000, 300);
 
-        assertTrue(menu.cambiarDisponibilidad("B01", false));
-        assertEquals(0, menu.listarDisponibles().size());
+        assertInstanceOf(Bebida.class, p);
+        assertEquals("300 ml", p.getDetalle());
+    }
+
+    @Test
+    void noPermitePrecioCeroNiNombreVacio() {
+        CreadorProducto creador = new CreadorAlimento();
+        assertThrows(IllegalArgumentException.class, () -> creador.registrar("P1", "Arepa", "Entradas", 0, 5));
+        assertThrows(IllegalArgumentException.class, () -> creador.registrar("P1", "  ", "Entradas", 5000, 5));
     }
 }
